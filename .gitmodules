@@ -1,0 +1,4 @@
+[submodule "mirakurun/src"]
+	path = mirakurun/src
+	url = git@github.com:hiro-hue/Mirakurun.git
+	branch = mirakurun-4.1.3-libaribb25

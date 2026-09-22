@@ -1,18 +1,35 @@
 version: '3.7'
 services:
     mirakurun:
-        image: chinachu/mirakurun
+        # 自前フォーク（hiro-hue/Mirakurun、private、submodule: mirakurun/src）から、
+        # libyakisoba/libsobacas/libaribb25（softcasの後継、B-CASカードリーダー不要でB25復号）
+        # 込みでビルドする。`git submodule update --init` に private repo への
+        # アクセス権（SSH鍵）が必要。詳細は docs/mirakurun-libaribb25-diff.md を参照。
+        build:
+            context: "./mirakurun/src"
+            dockerfile: "docker/Dockerfile"
         cap_add:
             - SYS_ADMIN
             - SYS_NICE
-        ports:
-            - "40772:40772"
-            - "9229:9229"
+        device_cgroup_rules:
+            - 'c *:* rmw'
+        network_mode: host
         volumes:
             - ./mirakurun/conf:/app-config
             - ./mirakurun/data:/app-data
+            - ./mirakurun/run:/var/run
+            - ./mirakurun/opt:/opt
+        tmpfs:
+            - /tmp
         environment:
             TZ: "Asia/Tokyo"
+            DOCKER_NETWORK: host
+            DISABLE_PCSCD: "0"
+            DISABLE_B25_TEST: "0"
+            # B-CAS鍵をイメージに焼き込まず、ホスト側ファイルの差し替えだけで
+            # 更新したい場合に指定する（例: ./mirakurun/conf/bcas_keys）。
+            # 未設定の場合、submodule内にビルド時に焼き込まれた既定の鍵が使われる。
+            #BCAS_KEYS_FILE: /app-config/bcas_keys
         devices:
             - /dev/bus:/dev/bus
             - /dev/dvb:/dev/dvb

@@ -97,3 +97,7 @@ FFmpeg 8.0 / AviSynth+ v3.7.5 の上でゼロからビルドする Dockerfile
 
 - `docker-compose-avisynth-jlse-sample.yml` を参考にビルド・起動する
 - 変更点の詳細は [docs/avisynth-jlse-diff.md](docs/avisynth-jlse-diff.md) を参照
+
+また、Mirakurun側も自前フォーク（B-CASカードリーダー不要のsoftcas後継、libyakisoba/libsobacas/
+libaribb25）を `mirakurun/src`（private submodule）として取り込んでいる。秘密情報の扱いも含め、
+詳細は [docs/mirakurun-libaribb25-diff.md](docs/mirakurun-libaribb25-diff.md) を参照。

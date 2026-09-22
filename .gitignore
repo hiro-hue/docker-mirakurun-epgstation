@@ -6,6 +6,8 @@
 /recorded/*
 /mirakurun/data/*
 /mirakurun/conf/*
+/mirakurun/run/*
+/mirakurun/opt/*
 /epgstation/custom.Dockerfile
 /epgstation/thumbnail/*.jpg
 /epgstation/data/streamfiles/*.ts
