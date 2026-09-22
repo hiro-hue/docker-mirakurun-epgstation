@@ -88,3 +88,12 @@ sudo docker-compose up -d
 ## v1からの移行について
 
 [docs/migration.md](docs/migration.md)を参照
+
+## fork独自の変更: JLSE (CMカット/チャプター生成) 対応版
+
+このforkには、EPGStation v2.10.0 + JLSE（CMカット/チャプター生成、delogo）を Ubuntu 24.04 /
+FFmpeg 8.0 / AviSynth+ v3.7.5 の上でゼロからビルドする Dockerfile
+（[epgstation/avisynth-jlse.Dockerfile](epgstation/avisynth-jlse.Dockerfile)）を追加している。
+
+- `docker-compose-avisynth-jlse-sample.yml` を参考にビルド・起動する
+- 変更点の詳細は [docs/avisynth-jlse-diff.md](docs/avisynth-jlse-diff.md) を参照

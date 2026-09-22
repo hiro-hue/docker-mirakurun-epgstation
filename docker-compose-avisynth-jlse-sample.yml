@@ -1,0 +1,48 @@
+version: '3.7'
+services:
+    mirakurun:
+        image: chinachu/mirakurun
+        cap_add:
+            - SYS_ADMIN
+            - SYS_NICE
+        ports:
+            - "40772:40772"
+            - "9229:9229"
+        volumes:
+            - ./mirakurun/conf:/app-config
+            - ./mirakurun/data:/app-data
+        environment:
+            TZ: "Asia/Tokyo"
+        devices:
+            - /dev/bus:/dev/bus
+            - /dev/dvb:/dev/dvb
+        restart: always
+        logging:
+            driver: json-file
+            options:
+                max-file: "1"
+                max-size: 10m
+
+    epgstation:
+        # EPGStation v2.10.0 + JLSE（CMカット/チャプター生成）を Ubuntu 24.04 / FFmpeg 8.0 /
+        # AviSynth+ v3.7.5 の上でゼロからビルドする。詳細は docs/avisynth-jlse-diff.md を参照。
+        build:
+            context: "./epgstation"
+            dockerfile: "avisynth-jlse.Dockerfile"
+        volumes:
+            - ./epgstation/config:/app/config
+            - ./epgstation/data:/app/data
+            - ./epgstation/thumbnail:/app/thumbnail
+            - ./epgstation/logs:/app/logs
+            - ./recorded:/app/recorded
+        environment:
+            TZ: "Asia/Tokyo"
+        depends_on:
+            - mirakurun
+        ports:
+            - "8888:8888"
+            - "8889:8889"
+#         user: "1000:1000"
+#         devices:
+#             - /dev/dri:/dev/dri
+        restart: always
