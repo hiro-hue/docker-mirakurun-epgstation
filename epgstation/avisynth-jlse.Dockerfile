@@ -261,6 +261,11 @@ RUN set -xe && \
     rm -rf ${DIR}
 
 # L-SMASH-Works (build and install)
+# lsmash-works-mpeg2-progressive-field.patch: MPEG-2 の progressive_frame（ソフトテレシネ部分）で、
+# FFmpeg のパーサーが top_field_first を返さないため直前のフィールド情報を使い回してしまい、
+# RFF の次のコマでフィールド順が食い違ったと判定されて repeat=true がファイル全体で無効になる不具合の修正。
+# （上流 Mr-Ojii/L-SMASH-Works の master でも未修正。詳細は docs/avisynth-jlse-diff.md）
+COPY avisynth/lsmash-works-mpeg2-progressive-field.patch /tmp/workdir/
 RUN set -xe && \
     DIR=/tmp/l-smash-works && \
     mkdir -p ${DIR} && \
@@ -269,6 +274,8 @@ RUN set -xe && \
     git remote add origin https://github.com/Mr-Ojii/L-SMASH-Works.git && \
     git fetch origin && \
     git checkout ${LSMASHSOURCE_VERSION} && \
+    git apply /tmp/workdir/lsmash-works-mpeg2-progressive-field.patch && \
+    grep -q "AV_FIELD_PROGRESSIVE" common/lwindex.c && \
     cd AviSynth && \
     LDFLAGS="-Wl,-Bsymbolic" meson setup build  --prefix "${PREFIX}" && \
     cd build && \

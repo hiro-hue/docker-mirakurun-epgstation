@@ -14,12 +14,50 @@
 Ubuntu 20.04版（`nekojarashih1/epgstation:5.1test`）および本番機haumeaのjlseと完全に一致することを
 確認済み。ロゴ検出・delogoも、一致するロゴファイルがあれば正しく動作することを確認済み。
 
-## stage 1〜2（avisynth-builder / avisynth-runtime）: 無改変
+## stage 1〜2（avisynth-builder / avisynth-runtime）: L-SMASH-Worksへのパッチ1件以外は無改変
 
 `tobitti0/Docker-AviSynthplus` の `8.0/ubuntu24.04/Dockerfile` と `avisynth/` 配下の補助スクリプト
 （`build_source.sh` / `download_tarballs.sh` / `generate-source-of-truth-ffmpeg-versions.py` /
 `install_ffmpeg.sh`）は、ステージ名を `builder`→`avisynth-builder`、`runtime`→`avisynth-runtime`
-に変えた以外は無改変。`COPY` の参照パスを `avisynth/*.sh` に合わせて変更している。
+に変えたことと、下記のL-SMASH-Worksへのパッチ以外は無改変。`COPY` の参照パスを `avisynth/*.sh` に合わせて変更している。
+
+### L-SMASH-Works: MPEG-2 のソフトテレシネで `repeat=true` が黙って無効になる不具合の修正
+
+`avisynth/lsmash-works-mpeg2-progressive-field.patch` を、L-SMASH-Works（Mr-Ojii版、
+`LSMASHSOURCE_VERSION`）のチェックアウト直後に `git apply` している。
+
+- **症状**: ソフトテレシネ（24コマの映像にRFFフラグを付けて送る方式）を含む放送TSを
+  `LWLibavVideoSource(..., repeat=true)` で読むと、RFFによるコマの繰り返しが一切行われず、
+  コマが足りないまま29.97fpsとして扱われる。映像が早送りになり、音声がどんどんずれる
+  （実例: 58分の録画で映像が約121秒短くなり、JLSEでエンコードした結果は47分時点で約2分の音ズレ）。
+  エラーも警告も出ない（ログレベルINFOで "Disable repeat control." が出るだけ）。
+- **原因**: `common/lwindex.c` のインデックス作成で、フィールド順を `AVCodecParserContext::field_order`
+  から取っている。FFmpeg の MPEG-2 パーサーは `progressive_frame` のコマに対して `AV_FIELD_PROGRESSIVE`
+  を返し、top_field_first を返さない。L-SMASH-Works はこの場合、直前のコマの値（`last_field_info`）を
+  使い回すので、ソフトテレシネ部分は全コマ「トップ先」として記録される。RFF付きのコマの次は本来
+  ボトム先になるため、`create_video_frame_order_list()` がフィールド順の食い違いと判定し、
+  `repeat` をファイル全体で無効にする。
+  上流（Mr-Ojii/L-SMASH-Works の master、2026-09時点）でも同じ処理のまま。
+  pm2時代にホストで使っていた古いL-SMASH-Worksでも、同じTSで同じように無効になることを確認した
+  （移行による劣化ではない）。
+- **修正**: MPEG-2 のフレーム構造のコマで `field_order == AV_FIELD_PROGRESSIVE` のときは、
+  フィールド順を `LW_FIELD_INFO_UNKNOWN` として記録し、直前の値の使い回しをやめる
+  （`last_field_info` は、実際にトップ／ボトムが分かったコマでだけ更新する）。
+  `create_video_frame_order_list()` は、UNKNOWN のコマについて直前のコマから正しい順番を推定する作りに
+  なっているので、RFFの並びが正しく再構成される。他のコーデック（H.264等）の処理は変えていない。
+- **確認結果**:
+  - ソフトテレシネを含む58分のTS: 修正前 99,849コマ／3331.6秒 → 修正後 103,489コマ／3453.08秒
+    （実際の長さ3453秒と一致）。元TSと突き合わせた音ズレは、全区間で一定の +43〜76ms（ドリフト無し）。
+  - 通常の録画（ハードテレシネのアニメ、インターレースのバラエティ）: コマ数・長さは修正前と同じ
+    （54,176コマ／54,077コマ）。先頭120コマの画像も修正前とバイト単位で一致。
+    同じパイプラインでの音ズレは +42〜76ms で、上記と同じ範囲（`pullup` と1コマ単位の測定誤差による、
+    従来からの値）。
+- **注意**: 修正前に作られた `.lwi` をそのまま使うと、古いフィールド情報のまま読まれる。
+  修正前のイメージで処理した録画を再エンコードするときは、`.ts.video.lwi` / `.ts.audio.lwi` を消してから行う。
+- **検討して採らなかった案**: `LWLibavVideoSource` に `fpsnum=30000, fpsden=1001`（タイムスタンプに基づく
+  CFR化）を足す方法。ドリフトは消えるが、映像の起点が変わり、通常の録画でも1コマ（33ms）、
+  途中から始まる録画では数百ms、映像が遅れる方向にずれることがあったため採らなかった
+  （JLSEの `jlse.js` が作るavsは変えていない）。
 
 ## stage 3〜4（jlse-build / release）: temp/Dockerfile（2025-10-28版）からの変更点
 

@@ -1,0 +1,28 @@
+diff --git a/common/lwindex.c b/common/lwindex.c
+index 12947b3..b6cc974 100644
+--- a/common/lwindex.c
++++ b/common/lwindex.c
+@@ -2325,6 +2325,13 @@ static int create_index
+                     else if( helper->parser_ctx->field_order == AV_FIELD_BB
+                           || helper->parser_ctx->field_order == AV_FIELD_BT )
+                         field_info = LW_FIELD_INFO_BOTTOM;
++                    else if( helper->parser_ctx->field_order == AV_FIELD_PROGRESSIVE
++                          && pkt_ctx->codec_id == AV_CODEC_ID_MPEG2VIDEO )
++                        /* MPEG-2 progressive_frame: the parser does not report top_field_first for it.
++                         * Leave the field order unknown so that the repeat control infers it from the
++                         * previous picture instead of reusing a stale value, which breaks soft telecine
++                         * (RFF) and makes create_video_frame_order_list() disable repeat control. */
++                        field_info = LW_FIELD_INFO_UNKNOWN;
+                     else
+                         field_info = helper->last_field_info;
+                     if( get_ticks_per_frame( pkt_ctx ) == 2 && helper->parser_ctx->repeat_pict != 0 )
+@@ -2332,7 +2339,8 @@ static int create_index
+                     else
+                         repeat_pict = 2 * helper->parser_ctx->repeat_pict + 1;
+                 }
+-                helper->last_field_info = field_info;
++                if( field_info != LW_FIELD_INFO_UNKNOWN )
++                    helper->last_field_info = field_info;
+             }
+             else
+             {
