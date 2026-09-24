@@ -128,6 +128,13 @@ AudioDub(last,LWLibavAudioSource(TSFilePath, stream_index=${index}, av_sync=true
 `chapter_exe` の `compat.h` への `<cstdint>` 追加パッチ（gcc 13向け）は、元のDockerfileから
 そのまま引き継いでいる（変更なし）。
 
+#### 後片付け（`jlse -r`）で分けたインデックスも消す
+
+JLSEの `-r`（後片付け）は、既定名の `<録画名>.ts.lwi` だけを消す。上のパッチでインデックスを
+`.ts.video.lwi` / `.ts.audio.lwi` に分けたため名前が合わず、エンコードのたびに録画フォルダへ
+数十MBずつ残っていた。`jlse.js` の後片付けにこの2つの削除を追加している（エンコードは `spawnSync` で
+同期実行されるので、削除はエンコード完了後に行われる）。
+
 ### 5. スモークテストの追加
 
 ビルドの最後に、ffmpeg起動・avisynth入力フォーマットの確認・共有ライブラリの未解決参照が

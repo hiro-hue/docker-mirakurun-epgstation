@@ -351,6 +351,8 @@ RUN set -xe && \
 # LWLibavAudioSourceが既定のcachefile（TSファイル名+".lwi"）を共有すると、2つ目のソースを
 # 開く際に共有インデックスの解析でセグフォルトする不具合がある（詳細は docs/avisynth-jlse-diff.md）。
 # 双方に別々のcachefileを指定すると再現しないため、jlse.jsが生成するavsスクリプトに追加する。
+# cachefileを分けると、jlse -r（後片付け）が消す既定名の <録画名>.ts.lwi と名前が合わなくなり、
+# .ts.video.lwi / .ts.audio.lwi がエンコードのたびに録画フォルダへ残るので、これも消すようにする。
 RUN set -xe && \
     cd /tmp/ && \
     git clone --recursive https://github.com/tobitti0/JoinLogoScpTrialSetLinux.git && \
@@ -360,6 +362,8 @@ RUN set -xe && \
     sed -i 's/LWLibavVideoSource(TSFilePath, repeat=true, dominance=1)/LWLibavVideoSource(TSFilePath, repeat=true, dominance=1, cachefile=TSFilePath+".video.lwi")/' src/jlse.js && \
     sed -i 's/AudioDub(last,LWLibavAudioSource(TSFilePath, stream_index=${index}, av_sync=true))/AudioDub(last,LWLibavAudioSource(TSFilePath, stream_index=${index}, av_sync=true, cachefile=TSFilePath+".audio.lwi"))/' src/jlse.js && \
     grep -n "cachefile" src/jlse.js && \
+    sed -i '/fs.removeSync(path.join(inputFileDir,`${inputFileName}.ts.lwi`));/a\    fs.removeSync(path.join(inputFileDir,`${inputFileName}.ts.video.lwi`));\n    fs.removeSync(path.join(inputFileDir,`${inputFileName}.ts.audio.lwi`));' src/jlse.js && \
+    test "$(grep -c 'fs.removeSync(path.join(inputFileDir,`${inputFileName}.ts.\(video\|audio\).lwi`));' src/jlse.js)" -eq 2 && \
     cd /tmp/JoinLogoScpTrialSetLinux/modules/chapter_exe && \
     sed -i '/#ifndef _WIN32/a #include <cstdint>' src/compat.h && \
     cd src && \
